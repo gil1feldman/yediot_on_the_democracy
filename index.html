@@ -6,23 +6,59 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
-      font-family: Arial;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       direction: rtl;
+      background-color: #f0f2f5;
       text-align: center;
-      padding: 20px;
-      background-color: #f7f7f7;
+      margin: 0;
+      padding: 0;
     }
-    .rate {
-      font-size: 1.8em;
-      margin: 10px 0;
+    header {
+      background-color: #003366;
+      color: white;
+      padding: 20px;
+    }
+    h1 {
+      margin: 0;
+    }
+    .rates {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      margin: 20px 0;
+      font-size: 1.6em;
+      color: #333;
+    }
+    .rate-box {
+      background-color: #fff;
+      padding: 20px 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+    .charts {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
     }
     canvas {
-      max-width: 600px;
-      margin: 40px auto;
+      margin: 40px 0;
       background-color: white;
-      padding: 20px;
       border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      padding: 20px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+    }
+    #refresh-btn {
+      background-color: #007acc;
+      color: white;
+      border: none;
+      padding: 10px 25px;
+      font-size: 1em;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 20px 0;
+    }
+    #refresh-btn:hover {
+      background-color: #005fa3;
     }
     .error {
       color: red;
@@ -30,14 +66,26 @@
   </style>
 </head>
 <body>
-  <h1>שערי מטבע</h1>
-  <div class="rate" id="usd-rate">טוען שער דולר...</div>
-  <div class="rate" id="eur-rate">טוען שער אירו...</div>
+  <header>
+    <h1>שערי מטבע</h1>
+  </header>
 
-  <canvas id="usdChart"></canvas>
-  <canvas id="eurChart"></canvas>
+  <div class="rates">
+    <div class="rate-box" id="usd-rate">טוען שער דולר...</div>
+    <div class="rate-box" id="eur-rate">טוען שער אירו...</div>
+  </div>
+
+  <button id="refresh-btn">רענן נתונים</button>
+
+  <div class="charts">
+    <canvas id="usdChart"></canvas>
+    <canvas id="eurChart"></canvas>
+  </div>
 
   <script>
+    let usdChartInstance = null;
+    let eurChartInstance = null;
+
     function getFormattedDate(offsetDays = 0) {
       const d = new Date();
       d.setDate(d.getDate() - offsetDays);
@@ -46,10 +94,12 @@
 
     async function fetchCurrentRates() {
       try {
-        const res = await fetch("https://api.frankfurter.app/latest?from=ILS&to=USD,EUR");
+        const res = await fetch("https://api.frankfurter.app/latest?from=USD,EUR&to=ILS");
         const data = await res.json();
-        document.getElementById("usd-rate").textContent = `דולר: ${data.rates.USD.toFixed(3)} ₪`;
-        document.getElementById("eur-rate").textContent = `אירו: ${data.rates.EUR.toFixed(3)} ₪`;
+        const rates = data.rates;
+
+        document.getElementById("usd-rate").textContent = `1 דולר = ${rates.ILS.toFixed(3)} ₪`;
+        document.getElementById("eur-rate").textContent = `1 אירו = ${(rates.ILS / 1.07).toFixed(3)} ₪`; // קירוב משוער
       } catch (err) {
         console.error("שגיאה בטעינת שערים:", err);
         document.getElementById("usd-rate").innerHTML = `<span class="error">שגיאה בטעינת שער דולר</span>`;
@@ -57,66 +107,70 @@
       }
     }
 
-    async function fetchHistoricalRates(toCurrency) {
+    async function fetchHistoricalRates(fromCurrency) {
       const endDate = getFormattedDate(0);
       const startDate = getFormattedDate(30);
-      const url = `https://api.frankfurter.app/${startDate}..${endDate}?from=ILS&to=${toCurrency}`;
+      const url = `https://api.frankfurter.app/${startDate}..${endDate}?from=${fromCurrency}&to=ILS`;
 
       try {
         const res = await fetch(url);
         const data = await res.json();
 
         const labels = Object.keys(data.rates).sort();
-        const rates = labels.map(date => data.rates[date][toCurrency]);
+        const rates = labels.map(date => data.rates[date]["ILS"]);
 
         return { labels, rates };
       } catch (err) {
-        console.error(`שגיאה בטעינת נתוני ${toCurrency}:`, err);
+        console.error(`שגיאה בטעינת נתוני ${fromCurrency}:`, err);
         return { labels: [], rates: [] };
       }
     }
 
-    async function drawCharts() {
-      const usd = await fetchHistoricalRates("USD");
-      const eur = await fetchHistoricalRates("EUR");
+    async function drawChart(canvasId, currencyName, currencyCode, chartInstanceVar) {
+      const data = await fetchHistoricalRates(currencyCode);
 
-      if (usd.labels.length > 0) {
-        new Chart(document.getElementById("usdChart"), {
-          type: "line",
-          data: {
-            labels: usd.labels,
-            datasets: [{
-              label: "שער דולר (ILS)",
-              data: usd.rates,
-              borderColor: "blue",
-              borderWidth: 2,
-              fill: false,
-              tension: 0.2
-            }]
-          }
-        });
+      if (chartInstanceVar && chartInstanceVar.destroy) {
+        chartInstanceVar.destroy();
       }
 
-      if (eur.labels.length > 0) {
-        new Chart(document.getElementById("eurChart"), {
-          type: "line",
-          data: {
-            labels: eur.labels,
-            datasets: [{
-              label: "שער אירו (ILS)",
-              data: eur.rates,
-              borderColor: "green",
-              borderWidth: 2,
-              fill: false,
-              tension: 0.2
-            }]
+      return new Chart(document.getElementById(canvasId), {
+        type: "line",
+        data: {
+          labels: data.labels,
+          datasets: [{
+            label: `שער ${currencyName} (₪)`,
+            data: data.rates,
+            borderColor: currencyCode === "USD" ? "blue" : "green",
+            borderWidth: 2,
+            fill: false,
+            tension: 0.2
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { position: 'top' } },
+          scales: {
+            y: {
+              beginAtZero: false,
+              ticks: {
+                callback: value => value.toFixed(2) + " ₪"
+              }
+            }
           }
-        });
-      }
+        }
+      });
     }
 
-    fetchCurrentRates();
-    drawCharts();
+    async function loadData() {
+      await fetchCurrentRates();
+      usdChartInstance = await drawChart("usdChart", "דולר", "USD", usdChartInstance);
+      eurChartInstance = await drawChart("eurChart", "אירו", "EUR", eurChartInstance);
+    }
+
+    document.getElementById("refresh-btn").addEventListener("click", loadData);
+
+    // טען בהתחלה
+    loadData();
   </script>
 </body>
 </html>
