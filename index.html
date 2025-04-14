@@ -55,10 +55,15 @@
       font-size: 1em;
       border-radius: 8px;
       cursor: pointer;
-      margin: 20px 0;
+      margin: 10px 0;
     }
     #refresh-btn:hover {
       background-color: #005fa3;
+    }
+    .last-updated {
+      font-size: 0.9em;
+      color: #666;
+      margin-bottom: 10px;
     }
     .error {
       color: red;
@@ -75,6 +80,7 @@
     <div class="rate-box" id="eur-rate">טוען שער אירו...</div>
   </div>
 
+  <div class="last-updated" id="last-updated">מעדכן תאריך...</div>
   <button id="refresh-btn">רענן נתונים</button>
 
   <div class="charts">
@@ -92,18 +98,32 @@
       return d.toISOString().split("T")[0];
     }
 
+    async function fetchRate(fromCurrency) {
+      const res = await fetch(`https://api.frankfurter.app/latest?from=${fromCurrency}&to=ILS`);
+      if (!res.ok) throw new Error("API fetch failed");
+      return res.json();
+    }
+
     async function fetchCurrentRates() {
       try {
-        const res = await fetch("https://api.frankfurter.app/latest?from=USD,EUR&to=ILS");
-        const data = await res.json();
-        const rates = data.rates;
+        const [usdData, eurData] = await Promise.all([
+          fetchRate("USD"),
+          fetchRate("EUR")
+        ]);
 
-        document.getElementById("usd-rate").textContent = `1 דולר = ${rates.ILS.toFixed(3)} ₪`;
-        document.getElementById("eur-rate").textContent = `1 אירו = ${(rates.ILS / 1.07).toFixed(3)} ₪`; // קירוב משוער
+        const usdRate = usdData.rates.ILS;
+        const eurRate = eurData.rates.ILS;
+
+        document.getElementById("usd-rate").textContent = `1 דולר = ${usdRate.toFixed(3)} ₪`;
+        document.getElementById("eur-rate").textContent = `1 אירו = ${eurRate.toFixed(3)} ₪`;
+
+        const updateDate = usdData.date || eurData.date;
+        document.getElementById("last-updated").textContent = `עודכן לאחרונה: ${updateDate.split('-').reverse().join('.')}`;
       } catch (err) {
         console.error("שגיאה בטעינת שערים:", err);
-        document.getElementById("usd-rate").innerHTML = `<span class="error">שגיאה בטעינת שער דולר</span>`;
-        document.getElementById("eur-rate").innerHTML = `<span class="error">שגיאה בטעינת שער אירו</span>`;
+        document.getElementById("usd-rate").innerHTML = `<span class="error">שגיאה בשער דולר</span>`;
+        document.getElementById("eur-rate").innerHTML = `<span class="error">שגיאה בשער אירו</span>`;
+        document.getElementById("last-updated").textContent = '';
       }
     }
 
@@ -169,8 +189,7 @@
 
     document.getElementById("refresh-btn").addEventListener("click", loadData);
 
-    // טען בהתחלה
-    loadData();
+    loadData(); // טעינה ראשונית
   </script>
 </body>
 </html>
