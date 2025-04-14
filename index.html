@@ -2,7 +2,7 @@
 <html lang="he">
 <head>
   <meta charset="UTF-8">
-  <title>שערי מטבע</title>
+  <title>שערי מטבע - דולר ואירו</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
@@ -10,28 +10,27 @@
       direction: rtl;
       text-align: center;
       padding: 20px;
-      background-color: #f5f5f5;
+      background-color: #f7f7f7;
     }
     .rate {
       font-size: 1.8em;
       margin: 10px 0;
     }
-    .error {
-      color: red;
-    }
     canvas {
       max-width: 600px;
       margin: 40px auto;
-      display: block;
       background-color: white;
       padding: 20px;
       border-radius: 10px;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
+    .error {
+      color: red;
+    }
   </style>
 </head>
 <body>
-  <h1>שערי מטבע - דולר ואירו</h1>
+  <h1>שערי מטבע</h1>
   <div class="rate" id="usd-rate">טוען שער דולר...</div>
   <div class="rate" id="eur-rate">טוען שער אירו...</div>
 
@@ -39,91 +38,78 @@
   <canvas id="eurChart"></canvas>
 
   <script>
+    function getFormattedDate(offsetDays = 0) {
+      const d = new Date();
+      d.setDate(d.getDate() - offsetDays);
+      return d.toISOString().split("T")[0];
+    }
+
     async function fetchCurrentRates() {
       try {
-        const res = await fetch('https://api.exchangerate.host/latest?base=ILS&symbols=USD,EUR');
-        if (!res.ok) throw new Error("Network error");
-
+        const res = await fetch("https://api.frankfurter.app/latest?from=ILS&to=USD,EUR");
         const data = await res.json();
-        if (!data.rates || !data.rates.USD || !data.rates.EUR) throw new Error("Invalid data");
-
-        document.getElementById('usd-rate').textContent = `דולר: ${(1 / data.rates.USD).toFixed(3)} ₪`;
-        document.getElementById('eur-rate').textContent = `אירו: ${(1 / data.rates.EUR).toFixed(3)} ₪`;
+        document.getElementById("usd-rate").textContent = `דולר: ${data.rates.USD.toFixed(3)} ₪`;
+        document.getElementById("eur-rate").textContent = `אירו: ${data.rates.EUR.toFixed(3)} ₪`;
       } catch (err) {
         console.error("שגיאה בטעינת שערים:", err);
-        document.getElementById('usd-rate').innerHTML = `<span class="error">שגיאה בטעינת שער דולר</span>`;
-        document.getElementById('eur-rate').innerHTML = `<span class="error">שגיאה בטעינת שער אירו</span>`;
+        document.getElementById("usd-rate").innerHTML = `<span class="error">שגיאה בטעינת שער דולר</span>`;
+        document.getElementById("eur-rate").innerHTML = `<span class="error">שגיאה בטעינת שער אירו</span>`;
       }
     }
 
-    async function fetchHistoricalRates(symbol) {
-      const end = new Date();
-      const start = new Date();
-      start.setDate(end.getDate() - 30);
+    async function fetchHistoricalRates(toCurrency) {
+      const endDate = getFormattedDate(0);
+      const startDate = getFormattedDate(30);
+      const url = `https://api.frankfurter.app/${startDate}..${endDate}?from=ILS&to=${toCurrency}`;
 
-      const startStr = start.toISOString().split('T')[0];
-      const endStr = end.toISOString().split('T')[0];
-
-      const url = `https://api.exchangerate.host/timeseries?start_date=${startStr}&end_date=${endStr}&base=ILS&symbols=${symbol}`;
       try {
         const res = await fetch(url);
-        if (!res.ok) throw new Error("Network error");
-
         const data = await res.json();
-        if (!data.rates) throw new Error("Invalid data structure");
 
         const labels = Object.keys(data.rates).sort();
-        const rates = labels.map(date => 1 / data.rates[date][symbol]);
+        const rates = labels.map(date => data.rates[date][toCurrency]);
 
         return { labels, rates };
       } catch (err) {
-        console.error(`שגיאה בטעינת נתונים היסטוריים ל-${symbol}:`, err);
+        console.error(`שגיאה בטעינת נתוני ${toCurrency}:`, err);
         return { labels: [], rates: [] };
       }
     }
 
     async function drawCharts() {
-      const usd = await fetchHistoricalRates('USD');
-      const eur = await fetchHistoricalRates('EUR');
+      const usd = await fetchHistoricalRates("USD");
+      const eur = await fetchHistoricalRates("EUR");
 
       if (usd.labels.length > 0) {
-        new Chart(document.getElementById('usdChart'), {
-          type: 'line',
+        new Chart(document.getElementById("usdChart"), {
+          type: "line",
           data: {
             labels: usd.labels,
             datasets: [{
-              label: 'שער דולר (₪)',
+              label: "שער דולר (ILS)",
               data: usd.rates,
+              borderColor: "blue",
               borderWidth: 2,
               fill: false,
               tension: 0.2
             }]
-          },
-          options: {
-            responsive: true,
-            plugins: { legend: { position: 'top' } },
-            scales: { y: { beginAtZero: false } }
           }
         });
       }
 
       if (eur.labels.length > 0) {
-        new Chart(document.getElementById('eurChart'), {
-          type: 'line',
+        new Chart(document.getElementById("eurChart"), {
+          type: "line",
           data: {
             labels: eur.labels,
             datasets: [{
-              label: 'שער אירו (₪)',
+              label: "שער אירו (ILS)",
               data: eur.rates,
+              borderColor: "green",
               borderWidth: 2,
               fill: false,
               tension: 0.2
             }]
-          },
-          options: {
-            responsive: true,
-            plugins: { legend: { position: 'top' } },
-            scales: { y: { beginAtZero: false } }
           }
         });
       }
