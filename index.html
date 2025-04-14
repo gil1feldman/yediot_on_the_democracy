@@ -10,15 +10,23 @@
       direction: rtl;
       text-align: center;
       padding: 20px;
+      background-color: #f5f5f5;
     }
     .rate {
       font-size: 1.8em;
       margin: 10px 0;
     }
+    .error {
+      color: red;
+    }
     canvas {
       max-width: 600px;
       margin: 40px auto;
       display: block;
+      background-color: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
   </style>
 </head>
@@ -32,58 +40,93 @@
 
   <script>
     async function fetchCurrentRates() {
-      const res = await fetch('https://api.exchangerate.host/latest?base=ILS&symbols=USD,EUR');
-      const data = await res.json();
-      document.getElementById('usd-rate').textContent = `דולר: ${(1 / data.rates.USD).toFixed(3)} ₪`;
-      document.getElementById('eur-rate').textContent = `אירו: ${(1 / data.rates.EUR).toFixed(3)} ₪`;
+      try {
+        const res = await fetch('https://api.exchangerate.host/latest?base=ILS&symbols=USD,EUR');
+        if (!res.ok) throw new Error("Network error");
+
+        const data = await res.json();
+        if (!data.rates || !data.rates.USD || !data.rates.EUR) throw new Error("Invalid data");
+
+        document.getElementById('usd-rate').textContent = `דולר: ${(1 / data.rates.USD).toFixed(3)} ₪`;
+        document.getElementById('eur-rate').textContent = `אירו: ${(1 / data.rates.EUR).toFixed(3)} ₪`;
+      } catch (err) {
+        console.error("שגיאה בטעינת שערים:", err);
+        document.getElementById('usd-rate').innerHTML = `<span class="error">שגיאה בטעינת שער דולר</span>`;
+        document.getElementById('eur-rate').innerHTML = `<span class="error">שגיאה בטעינת שער אירו</span>`;
+      }
     }
 
     async function fetchHistoricalRates(symbol) {
       const end = new Date();
       const start = new Date();
       start.setDate(end.getDate() - 30);
+
       const startStr = start.toISOString().split('T')[0];
       const endStr = end.toISOString().split('T')[0];
 
       const url = `https://api.exchangerate.host/timeseries?start_date=${startStr}&end_date=${endStr}&base=ILS&symbols=${symbol}`;
-      const res = await fetch(url);
-      const data = await res.json();
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Network error");
 
-      const labels = Object.keys(data.rates).sort();
-      const rates = labels.map(date => 1 / data.rates[date][symbol]);
+        const data = await res.json();
+        if (!data.rates) throw new Error("Invalid data structure");
 
-      return { labels, rates };
+        const labels = Object.keys(data.rates).sort();
+        const rates = labels.map(date => 1 / data.rates[date][symbol]);
+
+        return { labels, rates };
+      } catch (err) {
+        console.error(`שגיאה בטעינת נתונים היסטוריים ל-${symbol}:`, err);
+        return { labels: [], rates: [] };
+      }
     }
 
     async function drawCharts() {
       const usd = await fetchHistoricalRates('USD');
       const eur = await fetchHistoricalRates('EUR');
 
-      new Chart(document.getElementById('usdChart'), {
-        type: 'line',
-        data: {
-          labels: usd.labels,
-          datasets: [{
-            label: 'שער דולר (₪)',
-            data: usd.rates,
-            borderWidth: 2,
-            fill: false
-          }]
-        }
-      });
+      if (usd.labels.length > 0) {
+        new Chart(document.getElementById('usdChart'), {
+          type: 'line',
+          data: {
+            labels: usd.labels,
+            datasets: [{
+              label: 'שער דולר (₪)',
+              data: usd.rates,
+              borderWidth: 2,
+              fill: false,
+              tension: 0.2
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { position: 'top' } },
+            scales: { y: { beginAtZero: false } }
+          }
+        });
+      }
 
-      new Chart(document.getElementById('eurChart'), {
-        type: 'line',
-        data: {
-          labels: eur.labels,
-          datasets: [{
-            label: 'שער אירו (₪)',
-            data: eur.rates,
-            borderWidth: 2,
-            fill: false
-          }]
-        }
-      });
+      if (eur.labels.length > 0) {
+        new Chart(document.getElementById('eurChart'), {
+          type: 'line',
+          data: {
+            labels: eur.labels,
+            datasets: [{
+              label: 'שער אירו (₪)',
+              data: eur.rates,
+              borderWidth: 2,
+              fill: false,
+              tension: 0.2
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { position: 'top' } },
+            scales: { y: { beginAtZero: false } }
+          }
+        });
+      }
     }
 
     fetchCurrentRates();
