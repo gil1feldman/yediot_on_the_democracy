@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>טבלת פרסומים</title>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -58,18 +59,17 @@
   const sheetURL = "https://docs.google.com/spreadsheets/d/e/1odVpSFyoXBCZ1-dFBsOeTMXNFTVGq9T7yvu1D7-rjX0/pub?output=csv";
 
   fetch(sheetURL)
-    .then(res => res.text())
-    .then(csv => {
-      const lines = csv.trim().split("\n").slice(1); // skip header
+    .then(response => response.text())
+    .then(csvText => {
+      const parsed = Papa.parse(csvText, { header: true });
+
       const tableBody = document.querySelector("#data-table tbody");
 
-      lines.forEach(line => {
-        const cols = line.split(",");
-
-        const url = cols[0]?.trim();
-        const topic = cols[1]?.trim() || "לא צויין";
-        const impact = cols[2]?.trim() || "לא צויין";
-        const date = cols[3]?.trim() || new Date().toLocaleDateString("he-IL");
+      parsed.data.forEach(row => {
+        const url = row[Object.keys(row)[0]]?.trim();  // עמודה ראשונה
+        const topic = row[Object.keys(row)[1]]?.trim() || "לא צויין";  // עמודה שנייה
+        const impact = row[Object.keys(row)[2]]?.trim() || "לא צויין";  // עמודה שלישית
+        const date = row[Object.keys(row)[3]]?.trim() || new Date().toLocaleDateString("he-IL");
 
         if (!url) return;
 
@@ -85,8 +85,8 @@
         tableBody.appendChild(tr);
       });
     })
-    .catch(err => {
-      document.getElementById("data-table").outerHTML = `<p style="color:red;">אירעה שגיאה בטעינת הנתונים: ${err}</p>`;
+    .catch(error => {
+      document.getElementById("data-table").outerHTML = `<p style="color:red;">שגיאה בטעינת הנתונים: ${error}</p>`;
     });
 </script>
 
