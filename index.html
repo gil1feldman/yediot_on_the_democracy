@@ -11,9 +11,32 @@
       padding: 20px;
     }
 
+    h2 {
+      color: #1a3969;
+      font-size: 2em;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .filter-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .filter-container label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: bold;
+      color: #1a3969;
+    }
+
     select {
       font-size: 1em;
-      margin: 10px;
       padding: 6px 12px;
       border-radius: 6px;
       border: 1px solid #ccc;
@@ -24,7 +47,6 @@
       border-collapse: collapse;
       background: white;
       direction: rtl;
-      margin-top: 20px;
       border-radius: 6px;
       overflow: hidden;
     }
@@ -57,35 +79,39 @@
     a.date-link:hover {
       text-decoration: underline;
     }
-
-    h2 {
-      color: #1a3969;
-      font-size: 2em;
-      text-align: center;
-    }
   </style>
 </head>
 <body>
 
 <h2>טבלת פרסומים והשפעות על הדמוקרטיה</h2>
 
-<div style="text-align:center;">
-  סנן לפי נושא:
-  <select id="topic-filter"><option value="all">הצג הכל</option></select>
+<div class="filter-container">
+  <label>סנן לפי נושא:
+    <select id="topic-filter">
+      <option value="all">הצג הכל</option>
+    </select>
+  </label>
 
-  סנן לפי השפעה:
-  <select id="impact-filter"><option value="all">הצג הכל</option></select>
+  <label>סנן לפי השפעה:
+    <select id="impact-filter">
+      <option value="all">הצג הכל</option>
+    </select>
+  </label>
 
-  סנן לפי מקור:
-  <select id="source-filter"><option value="all">הצג הכל</option></select>
+  <label>סנן לפי מקור:
+    <select id="source-filter">
+      <option value="all">הצג הכל</option>
+    </select>
+  </label>
 
-  סנן לפי תאריך:
-  <select id="date-filter">
-    <option value="all">כל התאריכים</option>
-    <option value="7">7 ימים אחרונים</option>
-    <option value="30">30 ימים אחרונים</option>
-    <option value="90">90 ימים אחרונים</option>
-  </select>
+  <label>סנן לפי תאריך:
+    <select id="date-filter">
+      <option value="all">כל התאריכים</option>
+      <option value="7">7 ימים אחרונים</option>
+      <option value="30">30 ימים אחרונים</option>
+      <option value="90">90 ימים אחרונים</option>
+    </select>
+  </label>
 </div>
 
 <table id="data-table">
