@@ -93,22 +93,31 @@
   const impactFilter = document.getElementById("impact-filter");
   const dateFilter = document.getElementById("date-filter");
 
+  function formatDate(dateObj) {
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const year = dateObj.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
+
   function renderTable(data) {
     const tableBody = document.querySelector("#data-table tbody");
     tableBody.innerHTML = "";
 
-    data.forEach(row => {
-      const tr = document.createElement("tr");
-      const dateLink = `<a href="${row.url}" target="_blank" class="date-link">${row.dateText}</a>`;
+    data
+      .sort((a, b) => b.dateObj - a.dateObj) // חדש לישן
+      .forEach(row => {
+        const tr = document.createElement("tr");
+        const dateLink = `<a href="${row.url}" target="_blank" class="date-link">${formatDate(row.dateObj)}</a>`;
 
-      tr.innerHTML = `
-        <td>${row.topic}</td>
-        <td>${row.impact}</td>
-        <td>${row.notes}</td>
-        <td>${dateLink}</td>
-      `;
-      tableBody.appendChild(tr);
-    });
+        tr.innerHTML = `
+          <td>${row.topic}</td>
+          <td>${row.impact}</td>
+          <td>${row.notes}</td>
+          <td>${dateLink}</td>
+        `;
+        tableBody.appendChild(tr);
+      });
   }
 
   function applyFilters() {
@@ -146,13 +155,20 @@
           const infoDate = row["תאריך המידע"]?.trim();
           const insertDate = row["תאריך הזנה"]?.trim();
 
-          const dateText = infoDate || insertDate || new Date().toLocaleDateString("he-IL");
-          const dateObj = new Date(infoDate || insertDate || new Date());
+          // יצירת אובייקט תאריך תקני
+          let dateObj;
+          if (infoDate && !isNaN(Date.parse(infoDate))) {
+            dateObj = new Date(infoDate);
+          } else if (insertDate && !isNaN(Date.parse(insertDate))) {
+            dateObj = new Date(insertDate);
+          } else {
+            dateObj = new Date();
+          }
 
           topics.add(topic);
           impacts.add(impact);
 
-          return { url, topic, impact, notes, dateText, dateObj };
+          return { url, topic, impact, notes, dateObj };
         });
 
       // מילוי תיבות סינון
