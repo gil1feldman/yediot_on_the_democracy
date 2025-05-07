@@ -11,11 +11,19 @@
       padding: 20px;
     }
 
+    select {
+      font-size: 1em;
+      margin: 10px;
+      padding: 6px 12px;
+      border-radius: 6px;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
       background: white;
       direction: rtl;
+      margin-top: 20px;
     }
 
     th, td {
@@ -43,6 +51,19 @@
 <body>
 
 <h2 style="text-align:center;">טבלת פרסומים והשפעות על הדמוקרטיה</h2>
+
+<div style="text-align:center;">
+  סנן לפי נושא:
+  <select id="topic-filter">
+    <option value="all">הצג הכל</option>
+  </select>
+
+  סנן לפי השפעה:
+  <select id="impact-filter">
+    <option value="all">הצג הכל</option>
+  </select>
+</div>
+
 <table id="data-table">
   <thead>
     <tr>
@@ -58,29 +79,83 @@
 <script>
   const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQaXvyI2Iz73D8A_3etOd3BeT4AIpuf-vacbKTBctMocS_-Dhit2HiMwXkRHRBQe34DpF53YcFhg63x/pub?output=csv";
 
+  let allData = [];
+
+  const topicFilter = document.getElementById("topic-filter");
+  const impactFilter = document.getElementById("impact-filter");
+
+  function renderTable(data) {
+    const tableBody = document.querySelector("#data-table tbody");
+    tableBody.innerHTML = "";
+
+    data.forEach(row => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${row.topic}</td>
+        <td>${row.impact}</td>
+        <td>${row.date}</td>
+        <td><a href="${row.url}" target="_blank" class="btn">צפה בפרסום</a></td>
+      `;
+      tableBody.appendChild(tr);
+    });
+  }
+
+  function applyFilters() {
+    const topicValue = topicFilter.value;
+    const impactValue = impactFilter.value;
+
+    const filtered = allData.filter(row => {
+      return (topicValue === "all" || row.topic === topicValue) &&
+             (impactValue === "all" || row.impact === impactValue);
+    });
+
+    renderTable(filtered);
+  }
+
   fetch(sheetURL)
     .then(response => response.text())
     .then(csvText => {
       const parsed = Papa.parse(csvText, { header: true });
-      const tableBody = document.querySelector("#data-table tbody");
+      const topics = new Set();
+      const impacts = new Set();
 
-      parsed.data.forEach(row => {
-        const url = row[Object.keys(row)[0]]?.trim();         // עמודה 1 – קישור
-        const topic = row[Object.keys(row)[1]]?.trim() || "לא צויין";   // עמודה 2 – נושא
-        const impact = row[Object.keys(row)[2]]?.trim() || "לא צויין";  // עמודה 3 – השפעה
-        const date = row[Object.keys(row)[3]]?.trim() || new Date().toLocaleDateString("he-IL"); // עמודה 4 – תאריך או היום
+      allData = parsed.data
+        .filter(row => row["קישור לידיעה"])
+        .map(row => {
+          const url = row["קישור לידיעה"].trim();
+          const topic = row["הנושא הרלוונטי"]?.trim() || "לא צויין";
+          const impact = row["השפעת הידיעה"]?.trim() || "לא צויין";
+          const infoDate = row["תאריך המידע"]?.trim();
+          const insertDate = row["תאריך הזנה"]?.trim();
+          const date = infoDate || insertDate || new Date().toLocaleDateString("he-IL");
 
-        if (!url) return;
+          topics.add(topic);
+          impacts.add(impact);
 
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${topic}</td>
-          <td>${impact}</td>
-          <td>${date}</td>
-          <td><a href="${url}" target="_blank" class="btn">צפה בפרסום</a></td>
-        `;
-        tableBody.appendChild(tr);
+          return { url, topic, impact, date };
+        });
+
+      // מילוי תיבות סינון
+      [...topics].sort().forEach(t => {
+        const option = document.createElement("option");
+        option.value = t;
+        option.textContent = t;
+        topicFilter.appendChild(option);
       });
+
+      [...impacts].sort().forEach(i => {
+        const option = document.createElement("option");
+        option.value = i;
+        option.textContent = i;
+        impactFilter.appendChild(option);
+      });
+
+      // תצוגה ראשונית
+      renderTable(allData);
+
+      // אירועים לסינון
+      topicFilter.addEventListener("change", applyFilters);
+      impactFilter.addEventListener("change", applyFilters);
     })
     .catch(error => {
       document.getElementById("data-table").outerHTML = `
