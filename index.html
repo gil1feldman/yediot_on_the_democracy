@@ -36,16 +36,16 @@
     }
 
     th {
-      background: #1a3969; /* כחול כהה במקום ורוד */
+      background: #1a3969;
       color: white;
     }
 
     tr.strengthen {
-      background-color: #e3f5e3; /* ירוק בהיר */
+      background-color: #e3f5e3;
     }
 
     tr.weaken {
-      background-color: #fce2e2; /* אדום בהיר */
+      background-color: #fce2e2;
     }
 
     a.date-link {
@@ -71,14 +71,13 @@
 
 <div style="text-align:center;">
   סנן לפי נושא:
-  <select id="topic-filter">
-    <option value="all">הצג הכל</option>
-  </select>
+  <select id="topic-filter"><option value="all">הצג הכל</option></select>
 
   סנן לפי השפעה:
-  <select id="impact-filter">
-    <option value="all">הצג הכל</option>
-  </select>
+  <select id="impact-filter"><option value="all">הצג הכל</option></select>
+
+  סנן לפי מקור:
+  <select id="source-filter"><option value="all">הצג הכל</option></select>
 
   סנן לפי תאריך:
   <select id="date-filter">
@@ -95,6 +94,7 @@
       <th>הנושא הרלוונטי</th>
       <th>השפעת הידיעה</th>
       <th>הערות</th>
+      <th>מקור</th>
       <th>תאריך</th>
     </tr>
   </thead>
@@ -108,23 +108,28 @@
 
   const topicFilter = document.getElementById("topic-filter");
   const impactFilter = document.getElementById("impact-filter");
+  const sourceFilter = document.getElementById("source-filter");
   const dateFilter = document.getElementById("date-filter");
 
   function parseKnownDate(infoDate, insertDate) {
     let dateObj = null;
-
     if (infoDate && /^\d{4}-\d{2}-\d{2}$/.test(infoDate.trim())) {
       dateObj = new Date(infoDate.trim());
     }
-
     if (!dateObj && insertDate && /^\d{2}\/\d{2}\/\d{4}/.test(insertDate.trim())) {
-      const dateOnly = insertDate.trim().split(" ")[0];
-      const parts = dateOnly.split("/");
+      const parts = insertDate.trim().split(" ")[0].split("/");
       const [day, month, year] = parts;
       dateObj = new Date(`${year}-${month}-${day}`);
     }
-
     return dateObj || null;
+  }
+
+  function extractDomain(url) {
+    try {
+      return new URL(url).hostname.replace(/^www\./, '');
+    } catch {
+      return 'לא ידוע';
+    }
   }
 
   function formatDate(dateObj) {
@@ -143,13 +148,8 @@
       .sort((a, b) => b.dateObj - a.dateObj)
       .forEach(row => {
         const tr = document.createElement("tr");
-
-        // קביעת מחלקה לפי ההשפעה
-        if (row.impact.includes("מחזק")) {
-          tr.classList.add("strengthen");
-        } else if (row.impact.includes("מחליש")) {
-          tr.classList.add("weaken");
-        }
+        if (row.impact.includes("מחזק")) tr.classList.add("strengthen");
+        if (row.impact.includes("מחליש")) tr.classList.add("weaken");
 
         const dateLabel = formatDate(row.dateObj);
         const dateLink = row.url
@@ -160,6 +160,7 @@
           <td>${row.topic}</td>
           <td>${row.impact}</td>
           <td>${row.notes}</td>
+          <td>${row.sourceDomain}</td>
           <td>${dateLink}</td>
         `;
         tableBody.appendChild(tr);
@@ -169,16 +170,18 @@
   function applyFilters() {
     const topicValue = topicFilter.value;
     const impactValue = impactFilter.value;
+    const sourceValue = sourceFilter.value;
     const dateValue = dateFilter.value;
-
     const today = new Date();
+
     const filtered = allData.filter(row => {
       const matchTopic = (topicValue === "all" || row.topic === topicValue);
       const matchImpact = (impactValue === "all" || row.impact === impactValue);
+      const matchSource = (sourceValue === "all" || row.sourceDomain === sourceValue);
       const matchDate = (dateValue === "all") || (
         row.dateObj && (today - row.dateObj <= parseInt(dateValue) * 86400000)
       );
-      return matchTopic && matchImpact && matchDate;
+      return matchTopic && matchImpact && matchSource && matchDate;
     });
 
     renderTable(filtered);
@@ -190,23 +193,25 @@
       const parsed = Papa.parse(csvText, { header: true });
       const topics = new Set();
       const impacts = new Set();
+      const sources = new Set();
 
       allData = parsed.data
         .filter(row => row["קישור לידיעה"])
         .map(row => {
           const url = row["קישור לידיעה"].trim();
+          const sourceDomain = extractDomain(url);
           const topic = row["הנושא הרלוונטי"]?.trim() || "לא צויין";
           const impact = row["השפעת הידיעה"]?.trim() || "לא צויין";
           const notes = row["הערות"]?.trim() || "";
           const infoDate = row["תאריך המידע"]?.trim();
           const insertDate = row["תאריך הזנה"]?.trim();
-
           const dateObj = parseKnownDate(infoDate, insertDate);
 
           topics.add(topic);
           impacts.add(impact);
+          sources.add(sourceDomain);
 
-          return { url, topic, impact, notes, dateObj };
+          return { url, sourceDomain, topic, impact, notes, dateObj };
         });
 
       [...topics].sort().forEach(t => {
@@ -223,15 +228,23 @@
         impactFilter.appendChild(option);
       });
 
+      [...sources].sort().forEach(s => {
+        const option = document.createElement("option");
+        option.value = s;
+        option.textContent = s;
+        sourceFilter.appendChild(option);
+      });
+
       renderTable(allData);
 
       topicFilter.addEventListener("change", applyFilters);
       impactFilter.addEventListener("change", applyFilters);
+      sourceFilter.addEventListener("change", applyFilters);
       dateFilter.addEventListener("change", applyFilters);
     })
     .catch(error => {
-      document.getElementById("data-table").outerHTML = `
-        <p style="color:red;">⚠️ שגיאה בטעינת הנתונים: ${error.message}</p>`;
+      document.getElementById("data-table").outerHTML =
+        `<p style="color:red;">⚠️ שגיאה בטעינת הנתונים: ${error.message}</p>`;
     });
 </script>
 
