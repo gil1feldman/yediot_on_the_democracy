@@ -6,8 +6,8 @@
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #f0f0f0;
+      font-family: 'Alef', Arial, sans-serif;
+      background: #f9f9f9;
       padding: 20px;
     }
 
@@ -16,6 +16,7 @@
       margin: 10px;
       padding: 6px 12px;
       border-radius: 6px;
+      border: 1px solid #ccc;
     }
 
     table {
@@ -24,21 +25,27 @@
       background: white;
       direction: rtl;
       margin-top: 20px;
+      border-radius: 6px;
+      overflow: hidden;
     }
 
     th, td {
-      border: 1px solid #ccc;
+      border: 1px solid #ddd;
       padding: 12px;
       text-align: center;
     }
 
     th {
-      background: #e6007e;
+      background: #ec5b73; /* ורוד־אדום מהלוגו */
       color: white;
     }
 
+    td:nth-child(2) {
+      background: #f3f9f3; /* רקע ירקרק קל לעמודת השפעה */
+    }
+
     a.date-link {
-      color: #007BFF;
+      color: #00b2e3; /* תכלת מהטקסט בלוגו */
       text-decoration: none;
       font-weight: bold;
     }
@@ -46,11 +53,17 @@
     a.date-link:hover {
       text-decoration: underline;
     }
+
+    h2 {
+      color: #1a3969; /* כחול כהה מהלוגו */
+      font-size: 2em;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
 
-<h2 style="text-align:center;">טבלת פרסומים והשפעות על הדמוקרטיה</h2>
+<h2>טבלת פרסומים והשפעות על הדמוקרטיה</h2>
 
 <div style="text-align:center;">
   סנן לפי נושא:
@@ -93,16 +106,15 @@
   const impactFilter = document.getElementById("impact-filter");
   const dateFilter = document.getElementById("date-filter");
 
-  // פונקציה מותאמת לפורמטים ידועים מראש
   function parseKnownDate(infoDate, insertDate) {
     let dateObj = null;
 
-    // תאריך המידע – בפורמט YYYY-MM-DD
+    // תאריך המידע – פורמט YYYY-MM-DD
     if (infoDate && /^\d{4}-\d{2}-\d{2}$/.test(infoDate.trim())) {
       dateObj = new Date(infoDate.trim());
     }
 
-    // תאריך הזנה – בפורמט DD/MM/YYYY HH:MM:SS
+    // תאריך הזנה – פורמט DD/MM/YYYY HH:MM:SS
     if (!dateObj && insertDate && /^\d{2}\/\d{2}\/\d{4}/.test(insertDate.trim())) {
       const dateOnly = insertDate.trim().split(" ")[0];
       const parts = dateOnly.split("/");
@@ -154,7 +166,7 @@
       const matchTopic = (topicValue === "all" || row.topic === topicValue);
       const matchImpact = (impactValue === "all" || row.impact === impactValue);
       const matchDate = (dateValue === "all") || (
-        row.dateObj && (today - row.dateObj <= parseInt(dateValue) * 86400 * 1000)
+        row.dateObj && (today - row.dateObj <= parseInt(dateValue) * 86400000)
       );
       return matchTopic && matchImpact && matchDate;
     });
