@@ -62,6 +62,14 @@
   <select id="impact-filter">
     <option value="all">הצג הכל</option>
   </select>
+
+  סנן לפי תאריך:
+  <select id="date-filter">
+    <option value="all">כל התאריכים</option>
+    <option value="7">7 ימים אחרונים</option>
+    <option value="30">30 ימים אחרונים</option>
+    <option value="90">90 ימים אחרונים</option>
+  </select>
 </div>
 
 <table id="data-table">
@@ -83,6 +91,7 @@
 
   const topicFilter = document.getElementById("topic-filter");
   const impactFilter = document.getElementById("impact-filter");
+  const dateFilter = document.getElementById("date-filter");
 
   function renderTable(data) {
     const tableBody = document.querySelector("#data-table tbody");
@@ -90,7 +99,7 @@
 
     data.forEach(row => {
       const tr = document.createElement("tr");
-      const dateLink = `<a href="${row.url}" target="_blank" class="date-link">${row.date}</a>`;
+      const dateLink = `<a href="${row.url}" target="_blank" class="date-link">${row.dateText}</a>`;
 
       tr.innerHTML = `
         <td>${row.topic}</td>
@@ -105,10 +114,16 @@
   function applyFilters() {
     const topicValue = topicFilter.value;
     const impactValue = impactFilter.value;
+    const dateValue = dateFilter.value;
 
+    const today = new Date();
     const filtered = allData.filter(row => {
-      return (topicValue === "all" || row.topic === topicValue) &&
-             (impactValue === "all" || row.impact === impactValue);
+      const matchTopic = (topicValue === "all" || row.topic === topicValue);
+      const matchImpact = (impactValue === "all" || row.impact === impactValue);
+      const matchDate = (dateValue === "all") || (
+        row.dateObj && (today - row.dateObj <= parseInt(dateValue) * 24 * 60 * 60 * 1000)
+      );
+      return matchTopic && matchImpact && matchDate;
     });
 
     renderTable(filtered);
@@ -130,12 +145,14 @@
           const notes = row["הערות"]?.trim() || "";
           const infoDate = row["תאריך המידע"]?.trim();
           const insertDate = row["תאריך הזנה"]?.trim();
-          const date = infoDate || insertDate || new Date().toLocaleDateString("he-IL");
+
+          const dateText = infoDate || insertDate || new Date().toLocaleDateString("he-IL");
+          const dateObj = new Date(infoDate || insertDate || new Date());
 
           topics.add(topic);
           impacts.add(impact);
 
-          return { url, topic, impact, notes, date };
+          return { url, topic, impact, notes, dateText, dateObj };
         });
 
       // מילוי תיבות סינון
@@ -159,6 +176,7 @@
       // אירועים לסינון
       topicFilter.addEventListener("change", applyFilters);
       impactFilter.addEventListener("change", applyFilters);
+      dateFilter.addEventListener("change", applyFilters);
     })
     .catch(error => {
       document.getElementById("data-table").outerHTML = `
