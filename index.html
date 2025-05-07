@@ -56,37 +56,35 @@
 </table>
 
 <script>
-  const sheetURL = "https://docs.google.com/spreadsheets/d/e/1odVpSFyoXBCZ1-dFBsOeTMXNFTVGq9T7yvu1D7-rjX0/pub?output=csv";
+  const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQaXvyI2Iz73D8A_3etOd3BeT4AIpuf-vacbKTBctMocS_-Dhit2HiMwXkRHRBQe34DpF53YcFhg63x/pub?output=csv";
 
   fetch(sheetURL)
     .then(response => response.text())
     .then(csvText => {
       const parsed = Papa.parse(csvText, { header: true });
-
       const tableBody = document.querySelector("#data-table tbody");
 
       parsed.data.forEach(row => {
-        const url = row[Object.keys(row)[0]]?.trim();  // עמודה ראשונה
-        const topic = row[Object.keys(row)[1]]?.trim() || "לא צויין";  // עמודה שנייה
-        const impact = row[Object.keys(row)[2]]?.trim() || "לא צויין";  // עמודה שלישית
-        const date = row[Object.keys(row)[3]]?.trim() || new Date().toLocaleDateString("he-IL");
+        const url = row[Object.keys(row)[0]]?.trim();         // עמודה 1 – קישור
+        const topic = row[Object.keys(row)[1]]?.trim() || "לא צויין";   // עמודה 2 – נושא
+        const impact = row[Object.keys(row)[2]]?.trim() || "לא צויין";  // עמודה 3 – השפעה
+        const date = row[Object.keys(row)[3]]?.trim() || new Date().toLocaleDateString("he-IL"); // עמודה 4 – תאריך או היום
 
         if (!url) return;
 
         const tr = document.createElement("tr");
-
         tr.innerHTML = `
           <td>${topic}</td>
           <td>${impact}</td>
           <td>${date}</td>
           <td><a href="${url}" target="_blank" class="btn">צפה בפרסום</a></td>
         `;
-
         tableBody.appendChild(tr);
       });
     })
     .catch(error => {
-      document.getElementById("data-table").outerHTML = `<p style="color:red;">שגיאה בטעינת הנתונים: ${error}</p>`;
+      document.getElementById("data-table").outerHTML = `
+        <p style="color:red;">⚠️ שגיאה בטעינת הנתונים: ${error.message}</p>`;
     });
 </script>
 
