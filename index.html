@@ -95,20 +95,41 @@
 
   function parseDateFromString(str) {
     if (!str) return null;
-    const dateParts = str.trim().split(/[\/\-\.]/);
-    if (dateParts.length === 3) {
-      // DD/MM/YYYY or similar
-      if (dateParts[2].length === 4) {
-        return new Date(`${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`);
-      } else {
-        return new Date(str); // fallback
-      }
+
+    // תאריך אקסלי מספרי (למשל: 45231)
+    if (!isNaN(str) && !isNaN(parseFloat(str))) {
+      const excelEpoch = new Date(Date.UTC(1899, 11, 30)); // Excel starts on Dec 30, 1899
+      const days = parseFloat(str);
+      return new Date(excelEpoch.getTime() + days * 86400 * 1000);
     }
+
+    const cleaned = str.trim();
+    const dateParts = cleaned.split(/[\/\-\.]/);
+
+    if (dateParts.length === 3) {
+      let day, month, year;
+
+      if (dateParts[0].length === 4) {
+        // YYYY-MM-DD
+        year = dateParts[0];
+        month = dateParts[1];
+        day = dateParts[2];
+      } else {
+        // DD/MM/YYYY or DD.MM.YYYY
+        day = dateParts[0];
+        month = dateParts[1];
+        year = dateParts[2];
+      }
+
+      return new Date(`${year}-${month}-${day}`);
+    }
+
     const parsed = Date.parse(str);
     return isNaN(parsed) ? null : new Date(parsed);
   }
 
   function formatDate(dateObj) {
+    if (!(dateObj instanceof Date) || isNaN(dateObj)) return "אין תאריך";
     const day = String(dateObj.getDate()).padStart(2, '0');
     const month = String(dateObj.getMonth() + 1).padStart(2, '0');
     const year = dateObj.getFullYear();
@@ -123,7 +144,10 @@
       .sort((a, b) => b.dateObj - a.dateObj)
       .forEach(row => {
         const tr = document.createElement("tr");
-        const dateLink = `<a href="${row.url}" target="_blank" class="date-link">${formatDate(row.dateObj)}</a>`;
+        const dateLabel = formatDate(row.dateObj);
+        const dateLink = row.url
+          ? `<a href="${row.url}" target="_blank" class="date-link">${dateLabel}</a>`
+          : dateLabel;
 
         tr.innerHTML = `
           <td>${row.topic}</td>
@@ -145,7 +169,7 @@
       const matchTopic = (topicValue === "all" || row.topic === topicValue);
       const matchImpact = (impactValue === "all" || row.impact === impactValue);
       const matchDate = (dateValue === "all") || (
-        row.dateObj && (today - row.dateObj <= parseInt(dateValue) * 24 * 60 * 60 * 1000)
+        row.dateObj && (today - row.dateObj <= parseInt(dateValue) * 86400 * 1000)
       );
       return matchTopic && matchImpact && matchDate;
     });
@@ -173,7 +197,7 @@
           const dateObj =
             parseDateFromString(infoDate) ||
             parseDateFromString(insertDate) ||
-            new Date();
+            null;
 
           topics.add(topic);
           impacts.add(impact);
@@ -181,7 +205,6 @@
           return { url, topic, impact, notes, dateObj };
         });
 
-      // Populate filters
       [...topics].sort().forEach(t => {
         const option = document.createElement("option");
         option.value = t;
