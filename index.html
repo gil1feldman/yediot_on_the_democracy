@@ -193,6 +193,36 @@
       });
   }
 
+  function updateFilterCounts(filteredData) {
+    const countItems = (field) => {
+      const counts = {};
+      filteredData.forEach(row => {
+        const key = row[field];
+        counts[key] = (counts[key] || 0) + 1;
+      });
+      return counts;
+    };
+
+    const topicCounts = countItems("topic");
+    const impactCounts = countItems("impact");
+    const sourceCounts = countItems("sourceDomain");
+
+    const updateOptions = (selectElement, counts, allLabel) => {
+      Array.from(selectElement.options).forEach(option => {
+        if (option.value === "all") {
+          option.textContent = allLabel;
+        } else {
+          const count = counts[option.value] || 0;
+          option.textContent = `${option.value} (${count})`;
+        }
+      });
+    };
+
+    updateOptions(topicFilter, topicCounts, "הצג הכל");
+    updateOptions(impactFilter, impactCounts, "הצג הכל");
+    updateOptions(sourceFilter, sourceCounts, "הצג הכל");
+  }
+
   function applyFilters() {
     const topicValue = topicFilter.value;
     const impactValue = impactFilter.value;
@@ -211,6 +241,7 @@
     });
 
     renderTable(filtered);
+    updateFilterCounts(filtered);
   }
 
   fetch(sheetURL)
@@ -262,6 +293,7 @@
       });
 
       renderTable(allData);
+      updateFilterCounts(allData);
 
       topicFilter.addEventListener("change", applyFilters);
       impactFilter.addEventListener("change", applyFilters);
