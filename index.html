@@ -81,13 +81,25 @@
       color: white;
     }
 
-    tr.strengthen {
-      background-color: #e3f5e3;
-    }
+tr.impact-very-weak {
+  background-color: #8B0000; /* אדום כהה */
+  color: white;
+}
 
-    tr.weaken {
-      background-color: #fce2e2;
-    }
+tr.impact-weak {
+  background-color: #FF9999; /* אדום בהיר */
+  color: black;
+}
+
+tr.impact-strong {
+  background-color: #99FF99; /* ירוק בהיר */
+  color: black;
+}
+
+tr.impact-very-strong {
+  background-color: #006400; /* ירוק כהה */
+  color: white;
+}
 
     a.date-link {
       color: #00b2e3;
@@ -197,8 +209,20 @@
       .sort((a, b) => b.dateObj - a.dateObj)
       .forEach(row => {
         const tr = document.createElement("tr");
-        if (row.impact.includes("מחזק")) tr.classList.add("strengthen");
-        if (row.impact.includes("מחליש")) tr.classList.add("weaken");
+        switch (row.impact.trim()) {
+  case "מחלישה מאוד":
+    tr.classList.add("impact-very-weak");
+    break;
+  case "מחלישה קצת":
+    tr.classList.add("impact-weak");
+    break;
+  case "מחזקת קצת":
+    tr.classList.add("impact-strong");
+    break;
+  case "מחזקת מאוד":
+    tr.classList.add("impact-very-strong");
+    break;
+}
 
         const dateLabel = formatDate(row.dateObj);
         const dateLink = row.url
